@@ -1,140 +1,107 @@
-# 📘 Proyecto ETL – SABER 11
+# ETL Project – Saber 11
 
-Este proyecto implementa un **pipeline ETL (Extract, Transform, Load)** para procesar los datos de los exámenes **Saber 11** y cargarlos en un **Data Warehouse** en **MySQL** con un esquema en estrella.
-
----
-
-## 📋 Requisitos
-
-Antes de ejecutar el proyecto, asegúrate de tener instalado lo siguiente:
-
-- [Python 3.10+](https://www.python.org/downloads/)  
-- [MySQL Server 8+](https://dev.mysql.com/downloads/mysql/)  
-- [Git](https://git-scm.com/downloads) (opcional, si clonas el repo)  
-
-### Librerías de Python necesarias
-
-Instálalas con:
-
-```bash
-pip install -r requirements.txt
-```
-
-Si no tienes `requirements.txt`, puedes instalar manualmente:
-
-```bash
-pip install pandas numpy mysql-connector-python python-dotenv
-```
+This project implements an **ETL pipeline (Extract, Transform, Load)** to analyze the results of the Saber 11 exams in Colombia.  
+The workflow goes from extracting the official datasets, transforming them into a clean and standardized format, and loading them into a **MySQL Data Warehouse** with a star schema.  
+Finally, the data is consumed in an interactive dashboard.
 
 ---
 
-## 🗄️ Configuración de la base de datos
+## 📦 Requirements
 
-1. Ingresa a MySQL como root:
-
-```bash
-mysql -u root -p
-```
-
-2. Crea un usuario dedicado al proyecto y dale permisos:
-
-```sql
-CREATE USER 'etl_user'@'localhost' IDENTIFIED BY 'password_etl';
-GRANT ALL PRIVILEGES ON dw_saber.* TO 'etl_user'@'localhost';
-FLUSH PRIVILEGES;
-```
-
-> 🔑 **Recomendación**: no uses el usuario `root` para el pipeline.
-
-3. El pipeline creará automáticamente el esquema `dw_saber` y sus tablas al ejecutarse.
+1. **Python 3.10+**
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. **MySQL 8+** (or MariaDB compatible).
 
 ---
 
-## 🔑 Variables de entorno
+## ⚙️ MySQL Configuration
 
-El proyecto usa un archivo **`.env`** para almacenar credenciales de la base de datos.  
-Crea un archivo `.env` en la raíz del proyecto con el siguiente contenido:
+1. Create a dedicated user for this project:
+   ```sql
+   CREATE USER 'etl_user'@'localhost' IDENTIFIED BY 'etl_password';
+   GRANT ALL PRIVILEGES ON dw_saber.* TO 'etl_user'@'localhost';
+   FLUSH PRIVILEGES;
+   ```
 
-```env
-DB_HOST=localhost
-DB_USER=etl_user
-DB_PASSWORD=password_etl
-DB_NAME=dw_saber
-```
-
-⚠️ Importante: agrega `.env` a tu **`.gitignore`** para no subirlo a GitHub.
+2. The script `create_dw.sql` will automatically create the schema `dw_saber` with the star schema.
 
 ---
 
-## 📊 Datos de entrada
+## 📥 Data Acquisition
 
-Los datasets de **Saber 11** no están incluidos en este repositorio.  
-Debes solicitarlos en la página oficial:
+Due to licensing restrictions, the datasets are **not included** in this repository.  
+They must be requested directly from the official ICFES page via this form:  
 
-👉 [Formulario para solicitar datos](https://forms.office.com/pages/responsepage.aspx?id=EE6GJ-RbT02ttburUSAp6POGIb-ryxBJmGcBwbyeHXdUQk1TTjZLTUMzV0FJWTRYRjg3RE9FVUlLVy4u&origin=lprLink&route=shorturl)
-
-Una vez descargados los archivos `.csv`, colócalos en la carpeta del proyecto.
-
-Ejemplo:  
-```
-Proyecto_ETL/
-├── Examen_saber_11_20231.csv
-├── Examen_Saber_11_20241.csv
-├── main.py
-├── transform.py
-├── load_dw.py
-├── create_dw.sql
-├── config.py
-└── .env
-```
+👉 [Request datasets](https://forms.office.com/pages/responsepage.aspx?id=EE6GJ-RbT02ttburUSAp6POGIb-ryxBJmGcBwbyeHXdUQk1TTjZLTUMzV0FJWTRYRjg3RE9FVUlLVy4u&origin=lprLink&route=shorturl)
 
 ---
 
-## ▶️ Ejecución del pipeline
-
-Ejecuta el pipeline con:
+## 🚀 Running the Pipeline
 
 ```bash
 python main.py --csv "Examen_saber_11_20231.csv","Examen_Saber_11_20241.csv" --out .
 ```
 
-El pipeline hará lo siguiente:
+The pipeline performs:
+1. **Database and table creation.**
+2. **Extraction** of CSV files.
+3. **Transformation** of missing values, dates, and encodings.
+4. **Loading** into the Data Warehouse in MySQL.
+5. **Export** of a combined CSV (`dataset_combinado.csv`).
 
-1. Crear base de datos y tablas (`create_dw.sql`).
-2. Extraer y unificar datos desde los archivos `.csv`.
-3. Transformar los datos (limpieza, imputación de valores, normalización de fechas).
-4. Guardar el dataset combinado en `dataset_combinado.csv`.
-5. Cargar los datos en el Data Warehouse `dw_saber`.
+---
 
-Si todo sale bien, verás:
+## 🗄️ Data Model (Star Schema)
+
+The model follows a **star schema** design with four dimensions and one fact table:
+
+![Star Schema Diagram](star_schema.png)
+
+### Tables:
+
+- **dim_estudiante** → Student information (socio-demographic and educational conditions).  
+- **dim_colegio** → School and institution data.  
+- **dim_familia** → Socioeconomic variables of the household.  
+- **dim_tiempo** → Period, year, and semester of exam presentation.  
+- **hechos_resultados** → Scores, percentiles, and performance levels in each subject.  
+
+---
+
+## 📊 Dashboard KPIs
+
+The interactive dashboard was built in **Power BI** using the Data Warehouse. It includes the following key indicators:
+
+1. **Average percentile in critical reading** → Measures relative performance in reading comprehension.  
+2. **Average percentile in social and citizenship skills** → Evaluates critical thinking and civic participation skills.  
+3. **Average percentile in natural sciences** → Assesses competencies in biology, chemistry, and physics.  
+4. **Average percentile in English** → Measures English proficiency according to ICFES standards.  
+5. **Average global percentile** → Overall relative performance compared to all students in the country.  
+6. **Average global score by school shift** → Compares results between shifts (morning, afternoon, evening, etc.).  
+7. **Department map visualization** → Displays average performance geographically.  
+8. **Global score by socioeconomic strata and gender** → Analyzes performance gaps by socioeconomic level and gender.  
+
+---
+
+## 📂 Project Structure
 
 ```
-✅ Carga al DW finalizada con éxito.
+Proyecto_ETL/
+│── main.py              # Orchestrates the ETL pipeline
+│── transform.py         # Data cleaning and transformation
+│── load_dw.py           # Data loading into MySQL
+│── create_dw.sql        # Data Warehouse schema
+│── dataset_combinado.csv # Intermediate result
+│── requirements.txt     # Python dependencies
+│── README.md            # Project documentation
 ```
 
 ---
 
-## ⚠️ Notas importantes
+## 🔒 Notes
 
-- El pipeline está preparado para manejar valores faltantes (`NaN`, `None`, etc.) y asignar valores por defecto en algunos casos (ejemplo: fechas, periodos).  
-- La tabla de hechos **no incluye la columna `id_resultado` en los inserts**, ya que es `AUTO_INCREMENT`.  
-- Si modificas los nombres de columnas en los CSV, deberás ajustar también el código en `transform.py` y `load_dw.py`.  
-
----
-
-## 📦 Dependencias utilizadas
-
-- **pandas** → manipulación de datos.  
-- **numpy** → operaciones numéricas.  
-- **mysql-connector-python** → conexión a MySQL.  
-- **python-dotenv** → manejo de variables de entorno.  
-
----
-
-## 👨‍💻 Autores
-Emilio Marquez Gallego
-Samuel Uribe Zamora
-Juan Pablo Lopez Paruam
-
-
-Proyecto desarrollado para la materia **ETL - Ing. de datos e Inteligencia Artificial**.  
+- Datasets are **not included** in the repository.  
+- It is recommended to create a dedicated MySQL user with limited permissions.  
+- The pipeline was tested on Windows 11 with Python 3.11 and MySQL 8.0
